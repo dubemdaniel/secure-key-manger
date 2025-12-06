@@ -102,4 +102,4 @@ curl http://localhost:3001/protected/service \
 
 ## License
 
-UNLICENSED (demo project)
+UNLICENSED (HNG Task)
