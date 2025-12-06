@@ -1,98 +1,105 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Secure Key Manager
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Mini authentication + API key system for service-to-service access. Supports user login via JWT, API key issuance/validation, and middleware that detects whether a request is from a user (bearer token) or a service (API key).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- User signup/login with JWT (1h expiry by default).
+- API key creation with optional expiration; keys are stored hashed and can be revoked.
+- Middleware auto-detects bearer token vs API key and sets context.
+- Protected demo routes for user-only and service-only access.
+- Swagger UI for interactive testing at `/docs`.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Stack / Libraries (non-“common”)
 
-## Project setup
+- NestJS: modular structure + DI to build auth flows quickly.
+- @nestjs/swagger + swagger-ui-express: auto-generated, interactive API docs.
+- @nestjs/jwt: JWT signing/verification integrated with Nest.
+- class-validator + class-transformer: DTO validation/transformation at the edge.
+- bcryptjs: salted password hashing without native build steps.
+- Node `crypto` (hash + timingSafeEqual): hashes API keys and compares in constant time to avoid leaking raw keys.
 
-```bash
-$ npm install
-```
+## Requirements
 
-## Compile and run the project
+- Node 18+
+- npm
+
+## Setup
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
+## Environment
+
+- `PORT` (default: `3001`)
+- `JWT_SECRET` (recommended to set; default falls back to `dev_jwt_secret` for demos)
+
+## Run
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev   # watch mode on the default port (3001)
+# or
+npm run start       # non-watch
 ```
 
-## Deployment
+Swagger UI is served at: `http://localhost:3001/docs`
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Quickstart (browser via Swagger)
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+1. Open `http://localhost:3001/docs`.
+2. `POST /auth/signup` with email/password to create a user.
+3. `POST /auth/login` and copy the `accessToken`.
+4. Click “Authorize” → under `bearer`, paste the JWT.
+5. `POST /keys/create` to issue an API key (optional `serviceName`, `expiresInHours`). Copy the returned `apiKey` (shown once).
+6. Click “Authorize” again → under `apiKey`, paste the API key (sets `x-api-key`).
+7. Call `GET /protected/user` (requires bearer token) and `GET /protected/service` (requires API key) to verify both paths.
+
+## Quickstart (curl)
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Signup
+curl -X POST http://localhost:3001/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"a@b.com","password":"secret123"}'
+
+# Login -> get accessToken
+curl -X POST http://localhost:3001/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"a@b.com","password":"secret123"}'
+
+# Create API key (requires JWT)
+curl -X POST http://localhost:3001/keys/create \
+  -H "Authorization: Bearer <JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"serviceName":"svc1","expiresInHours":24}'
+
+# Protected as user (JWT)
+curl http://localhost:3001/protected/user \
+  -H "Authorization: Bearer <JWT>"
+
+# Protected as service (API key)
+curl http://localhost:3001/protected/service \
+  -H "x-api-key: <API_KEY>"
+# or
+curl http://localhost:3001/protected/service \
+  -H "Authorization: ApiKey <API_KEY>"
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Behavior Notes
 
-## Resources
+- Users and API keys are stored in-memory (no DB). Restarting the server clears data.
+- API keys are hashed at rest; only the prefix and metadata are returned after creation.
+- JWT expires in 1 hour by default.
+- Detection middleware accepts:
+  - User: `Authorization: Bearer <JWT>`
+  - Service: `x-api-key: <API_KEY>` (or `Authorization: ApiKey <API_KEY>`)
 
-Check out a few resources that may come in handy when working with NestJS:
+## Testing
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- Type check: `npx tsc --noEmit`
+- (No automated tests provided in this demo.)
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED (demo project)

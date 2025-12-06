@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { User } from './user.entity';
@@ -8,7 +12,9 @@ export class UsersService {
   private users: User[] = [];
 
   async createUser(email: string, password: string): Promise<User> {
-    const existing = this.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const existing = this.users.find(
+      (u) => u.email.toLowerCase() === email.toLowerCase(),
+    );
     if (existing) {
       throw new ConflictException('Email already registered');
     }
@@ -25,7 +31,9 @@ export class UsersService {
   }
 
   async validateUser(email: string, password: string): Promise<User> {
-    const user = this.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const user = this.users.find(
+      (u) => u.email.toLowerCase() === email.toLowerCase(),
+    );
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -42,4 +50,3 @@ export class UsersService {
     return this.users.find((u) => u.id === id);
   }
 }
-
