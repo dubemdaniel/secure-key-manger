@@ -31,7 +31,7 @@ export class AuthDetectionMiddleware implements NestMiddleware {
           return next();
         }
       } catch {
-        // fall through to API key detection
+        
       }
     }
 
